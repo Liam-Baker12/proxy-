@@ -1,68 +1,33 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
   <title>Pyodide Proxy Test</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 40px;
-      background: #f8f9fa;
-    }
-    h1 {
-      color: #333;
-    }
-    #status {
-      margin-bottom: 20px;
-      padding: 10px;
-      border-radius: 6px;
-      font-weight: bold;
-    }
-    .ready {
-      background: #e6ffed;
-      color: #137333;
-      border: 1px solid #137333;
-    }
-    .loading {
-      background: #fff8e1;
-      color: #8a6d3b;
-      border: 1px solid #8a6d3b;
-    }
-    .error {
-      background: #ffebeb;
-      color: #d93025;
-      border: 1px solid #d93025;
-    }
-    #output {
-      margin-top: 20px;
-      padding: 15px;
-      border-radius: 6px;
-      white-space: pre-wrap;
-      font-family: monospace;
-    }
-    .success {
-      background: #e6ffed;
-      color: #137333;
-      border: 1px solid #137333;
-    }
-    .error-output {
-      background: #ffebeb;
-      color: #d93025;
-      border: 1px solid #d93025;
-    }
+    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; }
+    h1 { font-size: 24px; }
+    #status { padding: 10px; margin-bottom: 15px; border-radius: 5px; }
+    .loading { background: #fff3cd; color: #856404; }
+    .ready { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    #output { padding: 10px; background: #222; color: #0f0; white-space: pre-wrap; margin-top: 15px; border-radius: 5px; }
+    .error-output { color: #f88; }
   </style>
 </head>
 <body>
-  <h1>🔗 Pyodide Proxy</h1>
+  <h1>Pyodide Proxy Test</h1>
+
+  <!-- Status -->
   <div id="status" class="loading">⏳ Loading Pyodide...</div>
 
-  <p>Enter a URL to fetch using Python in the browser:</p>
-
-  <input type="text" id="urlInput" placeholder="https://example.com">
+  <!-- Input + Button -->
+  <input id="urlInput" type="text" placeholder="Enter URL (e.g., https://example.com)" size="50">
   <button onclick="runProxy()">Fetch</button>
 
-  <div id="output"></div>
+  <!-- Output -->
+  <pre id="output">Waiting for input...</pre>
 
+  <!-- Pyodide Loader -->
   <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
   <script>
     let pyodide;
@@ -72,20 +37,28 @@
       try {
         status.textContent = "⏳ Loading Pyodide...";
         status.className = "loading";
+        console.log("Step 1: Loading Pyodide...");
 
         pyodide = await loadPyodide();
+        console.log("Step 2: Pyodide loaded");
 
-        // Try to fetch and load main.py from your repo
         const response = await fetch("main.py");
+        console.log("Step 3: Fetching main.py (status: " + response.status + ")");
+
         if (!response.ok) {
           throw new Error("main.py not found (HTTP " + response.status + ")");
         }
+
         const pyCode = await response.text();
+        console.log("Step 4: main.py loaded, length:", pyCode.length);
+
         await pyodide.runPythonAsync(pyCode);
+        console.log("Step 5: main.py executed");
 
         status.textContent = "✅ Pyodide + main.py ready!";
         status.className = "ready";
       } catch (err) {
+        console.error("❌ Error loading Pyodide:", err);
         status.textContent = "❌ Failed to load: " + err;
         status.className = "error";
       }
@@ -98,17 +71,19 @@
       output.className = "";
 
       try {
-        let result = await pyodide.runPythonAsync(`
-          await proxy_get("${url}")
-        `);
-        if (result.startsWith("❌") || result.startsWith("Error")) {
+        console.log("Calling proxy_get with URL:", url);
+        let result = await pyodide.runPythonAsync(`await proxy_get("${url}")`);
+        console.log("Result from proxy_get:", result);
+
+        if (result.startsWith("❌")) {
           output.textContent = result;
           output.className = "error-output";
         } else {
-          output.textContent = "✅ Success:\n\n" + result;
-          output.className = "success";
+          output.textContent = result;
+          output.className = "";
         }
       } catch (err) {
+        console.error("❌ Error in runProxy():", err);
         output.textContent = "❌ Failed: " + err;
         output.className = "error-output";
       }
