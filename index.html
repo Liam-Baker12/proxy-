@@ -12,6 +12,27 @@
     h1 {
       color: #333;
     }
+    #status {
+      margin-bottom: 20px;
+      padding: 10px;
+      border-radius: 6px;
+      font-weight: bold;
+    }
+    .ready {
+      background: #e6ffed;
+      color: #137333;
+      border: 1px solid #137333;
+    }
+    .loading {
+      background: #fff8e1;
+      color: #8a6d3b;
+      border: 1px solid #8a6d3b;
+    }
+    .error {
+      background: #ffebeb;
+      color: #d93025;
+      border: 1px solid #d93025;
+    }
     #output {
       margin-top: 20px;
       padding: 15px;
@@ -24,26 +45,17 @@
       color: #137333;
       border: 1px solid #137333;
     }
-    .error {
+    .error-output {
       background: #ffebeb;
       color: #d93025;
       border: 1px solid #d93025;
-    }
-    input[type="text"] {
-      width: 400px;
-      padding: 8px;
-      font-size: 14px;
-    }
-    button {
-      padding: 8px 12px;
-      font-size: 14px;
-      margin-left: 5px;
-      cursor: pointer;
     }
   </style>
 </head>
 <body>
   <h1>🔗 Pyodide Proxy</h1>
+  <div id="status" class="loading">⏳ Loading Pyodide...</div>
+
   <p>Enter a URL to fetch using Python in the browser:</p>
 
   <input type="text" id="urlInput" placeholder="https://example.com">
@@ -56,19 +68,34 @@
     let pyodide;
 
     async function main() {
-      pyodide = await loadPyodide();
-      await pyodide.loadPackage("micropip");
-      await pyodide.runPythonAsync(`
-        from pyodide.http import pyfetch
+      try {
+        const status = document.getElementById("status");
+        status.textContent = "⏳ Loading Pyodide...";
+        status.className = "loading";
 
-        async def proxy_get(url):
-            try:
-                response = await pyfetch(url)
-                text = await response.string()
-                return text[:1000]  # first 1000 chars
-            except Exception as e:
-                return f"Error: {e}"
-      `);
+        pyodide = await loadPyodide();
+        await pyodide.loadPackage("micropip");
+
+        // Define proxy_get in Python
+        await pyodide.runPythonAsync(`
+from pyodide.http import pyfetch
+
+async def proxy_get(url):
+    try:
+        response = await pyfetch(url)
+        text = await response.string()
+        return text[:1000]  # limit output size
+    except Exception as e:
+        return f"Error: {e}"
+        `);
+
+        status.textContent = "✅ Pyodide ready!";
+        status.className = "ready";
+      } catch (err) {
+        const status = document.getElementById("status");
+        status.textContent = "❌ Failed to load Pyodide: " + err;
+        status.className = "error";
+      }
     }
 
     async function runProxy() {
@@ -83,16 +110,22 @@
         `);
         if (result.startsWith("Error:")) {
           output.textContent = "❌ " + result;
-          output.className = "error";
+          output.className = "error-output";
         } else {
           output.textContent = "✅ Success:\n\n" + result;
           output.className = "success";
         }
       } catch (err) {
         output.textContent = "❌ Failed: " + err;
-        output.className = "error";
+        output.className = "error-output";
       }
     }
+
+    main();
+  </script>
+</body>
+</html>
+
 
     main();
   </script>
