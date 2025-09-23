@@ -1,164 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Worker Redirect (secure + mock Pyodide)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="UTF-8">
+  <title>Secure Proxy</title>
   <style>
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
-                   Arial, "Noto Sans", "Liberation Sans", sans-serif;
-      background: #f5f7fb;
-      color: #222;
-      margin: 0;
-      padding: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-    }
-    .card {
-      background: #fff;
-      border-radius: 12px;
-      padding: 28px;
-      box-shadow: 0 8px 30px rgba(16,24,40,0.08);
-      width: 560px;
-      max-width: calc(100% - 40px);
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: #f0f0f0;
       text-align: center;
+      padding: 40px;
     }
-    h1 { margin: 0 0 12px; font-size: 20px; }
-    p.help { margin: 6px 0 18px; color: #555; font-size: 14px; }
     input[type="text"] {
-      flex: 1;
-      padding: 10px 12px;
-      border-radius: 8px;
-      border: 1px solid #dfe7f2;
-      font-size: 14px;
-      outline: none;
-      min-width: 0;
-    }
-    button.primary {
-      background: linear-gradient(180deg,#0066d6,#0052b4);
-      color: #fff;
+      width: 60%;
+      padding: 12px;
+      font-size: 1.1em;
       border: none;
-      padding: 10px 16px;
+      border-radius: 8px;
+      margin-right: 10px;
+    }
+    button {
+      padding: 12px 20px;
+      font-size: 1.1em;
+      background: #007bff;
+      color: white;
+      border: none;
       border-radius: 8px;
       cursor: pointer;
-      font-weight: 600;
     }
-    button.primary:active { transform: translateY(1px); }
-    #status {
-      margin-top: 18px;
-      padding: 10px 12px;
+    button:hover {
+      background: #0056b3;
+    }
+    #result {
+      margin-top: 20px;
+      font-family: monospace;
+      background: #1e1e1e;
+      padding: 15px;
       border-radius: 8px;
       display: inline-block;
-      font-weight: 600;
-      min-width: 220px;
+      max-width: 80%;
+      word-wrap: break-word;
     }
-    .loading { background:#fff8e6; color:#8a6d3b; border:1px solid #f2e6c9; }
-    .ready   { background:#e9f9ef; color:#046c3a; border:1px solid #cfeeda; }
-    .error   { background:#fff0f0; color:#a31b1b; border:1px solid #f3cfcf; }
-    .small { font-size:13px; color:#666; margin-top:8px; }
-    .spinner {
-      display:inline-block;
-      width:14px; height:14px;
-      border-radius:50%;
-      border:2px solid rgba(0,0,0,0.12);
-      border-top-color: rgba(0,0,0,0.28);
-      animation: spin 1s linear infinite;
-      vertical-align: middle;
-      margin-right:8px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>Open a URL through Worker</h1>
-    <p class="help">Type a website address below and click <strong>Go</strong>. The Worker will store and redirect securely (encrypted).</p>
+  <h1>🔐 Encrypted Proxy</h1>
+  <p>Enter a URL to encrypt and store securely.</p>
 
-    <div style="display:flex; gap:8px; align-items:center; justify-content:center;">
-      <input id="urlInput" type="text" placeholder="https://example.com (or youtube.com)" />
-      <button class="primary" id="goBtn">Go</button>
-    </div>
+  <form id="proxyForm">
+    <input type="text" id="urlInput" placeholder="https://example.com" required />
+    <button type="submit">Encrypt & Store</button>
+  </form>
 
-    <div id="status" class="loading" aria-live="polite" role="status">
-      <span class="spinner" id="spinner"></span>
-      <span id="statusText">Loading Pyodide (mock)...</span>
-    </div>
-
-    <div class="small">Note: the Pyodide load is cosmetic — Worker handles secure proxying.</div>
-  </div>
+  <div id="result"></div>
 
   <script>
-    const WORKER_BASE = "https://jim.liambaker2030.workers.dev"; // your Worker URL
+    document.getElementById("proxyForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    const statusEl = document.getElementById("status");
-    const statusText = document.getElementById("statusText");
-    const spinner = document.getElementById("spinner");
-    const goBtn = document.getElementById("goBtn");
-    const urlInput = document.getElementById("urlInput");
-
-    // Status helpers
-    function setStatusLoading(text) {
-      statusEl.className = "loading";
-      statusText.textContent = text;
-      spinner.style.display = "inline-block";
-    }
-    function setStatusReady(text) {
-      statusEl.className = "ready";
-      statusText.textContent = text;
-      spinner.style.display = "none";
-    }
-    function setStatusError(text) {
-      statusEl.className = "error";
-      statusText.textContent = text;
-      spinner.style.display = "none";
-    }
-
-    // Mock Pyodide init (cosmetic)
-    async function mockPyodideInit() {
-      setStatusLoading("Loading Pyodide (mock)...");
-      await new Promise(r => setTimeout(r, 800));
-      setStatusLoading("Finalizing modules...");
-      await new Promise(r => setTimeout(r, 600));
-      setStatusReady("✅ Pyodide ready (mock)");
-    }
-
-    // Save + redirect through Worker
-    async function saveAndOpen() {
-      let raw = urlInput.value.trim();
-      if (!raw) return alert("Please enter a URL");
-      if (!/^https?:\/\//i.test(raw)) raw = "https://" + raw;
-
-      setStatusLoading("Saving encrypted link...");
+      const url = document.getElementById("urlInput").value.trim();
+      if (!url) return;
 
       try {
-        const res = await fetch(WORKER_BASE + "/api/save", {
+        const response = await fetch("https://jim.liambaker2030.workers.dev/encrypt", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: raw, ttlSeconds: 300 }),
+          body: JSON.stringify({ targetUrl: url })
         });
-        if (!res.ok) {
-          const text = await res.text();
-          setStatusError("Save error: " + res.status);
-          return alert("Error: " + text);
-        }
-        const data = await res.json();
-        setStatusReady("Redirecting...");
-        window.location.href = WORKER_BASE + "?id=" + encodeURIComponent(data.id);
+
+        const result = await response.text();
+        document.getElementById("result").textContent = result;
       } catch (err) {
-        setStatusError("Network error");
-        alert("Network error: " + err);
+        document.getElementById("result").textContent = "❌ Error: " + err.message;
       }
-    }
-
-    // Wire up
-    goBtn.addEventListener("click", saveAndOpen);
-    urlInput.addEventListener("keydown", e => { if (e.key === "Enter") saveAndOpen(); });
-
-    // Start mock init
-    mockPyodideInit();
+    });
   </script>
 </body>
 </html>
