@@ -1,56 +1,180 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Worker Redirect (Encrypted)</title>
+  <meta charset="utf-8" />
+  <title>Worker Redirect (with mock Pyodide)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #f5f5f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+                   Arial, "Noto Sans", "Liberation Sans", sans-serif;
+      background: #f5f7fb;
+      color: #222;
+      margin: 0;
+      padding: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px;
+      box-shadow: 0 8px 30px rgba(16,24,40,0.08);
+      width: 560px;
+      max-width: calc(100% - 40px);
       text-align: center;
-      padding: 50px;
     }
+    h1 { margin: 0 0 12px; font-size: 20px; }
+    p.help { margin: 6px 0 18px; color: #555; font-size: 14px; }
+    .controls { display:flex; justify-content:center; gap:8px; margin-top: 10px; }
     input[type="text"] {
-      padding: 8px;
-      width: 300px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #dfe7f2;
+      font-size: 14px;
+      outline: none;
+      min-width: 0;
     }
-    button {
-      padding: 8px 16px;
-      margin-left: 10px;
+    button.primary {
+      background: linear-gradient(180deg,#0066d6,#0052b4);
+      color: #fff;
       border: none;
-      border-radius: 4px;
-      background: #0078d7;
-      color: white;
+      padding: 10px 16px;
+      border-radius: 8px;
       cursor: pointer;
+      font-weight: 600;
     }
-    button:hover {
-      background: #005a9e;
+    button.primary:active { transform: translateY(1px); }
+    #status {
+      margin-top: 18px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      display: inline-block;
+      font-weight: 600;
+      min-width: 220px;
+    }
+    .loading { background:#fff8e6; color:#8a6d3b; border:1px solid #f2e6c9; }
+    .ready   { background:#e9f9ef; color:#046c3a; border:1px solid #cfeeda; }
+    .error   { background:#fff0f0; color:#a31b1b; border:1px solid #f3cfcf; }
+
+    .small { font-size:13px; color:#666; margin-top:8px; }
+    .spinner {
+      display:inline-block;
+      width:14px; height:14px;
+      border-radius:50%;
+      border:2px solid rgba(0,0,0,0.12);
+      border-top-color: rgba(0,0,0,0.28);
+      animation: spin 1s linear infinite;
+      vertical-align: middle;
+      margin-right:8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width:600px){
+      .card { padding:18px; }
+      input[type="text"]{ font-size:13px; }
     }
   </style>
 </head>
 <body>
-  <h1>Open a URL through Worker</h1>
-  <input type="text" id="urlInput" placeholder="https://example.com">
-  <button onclick="openUrl()">Go</button>
+  <div class="card">
+    <h1>Open a URL through Worker</h1>
+    <p class="help">Type a website address below and click <strong>Go</strong>. The page will be opened via your Cloudflare Worker (URL is obfuscated).</p>
+
+    <div style="display:flex; gap:8px; align-items:center; justify-content:center;">
+      <input id="urlInput" type="text" placeholder="https://example.com (or youtube.com)" />
+      <button class="primary" id="goBtn">Go</button>
+    </div>
+
+    <div id="status" class="loading" aria-live="polite" role="status">
+      <span class="spinner" id="spinner"></span>
+      <span id="statusText">Loading Pyodide (mock)...</span>
+    </div>
+
+    <div class="small">Note: the Pyodide load shown here is cosmetic — the page uses your Cloudflare Worker for proxying.</div>
+  </div>
 
   <script>
-    const workerUrl = "https://jim.liambaker2030.workers.dev";
+    // Your Cloudflare Worker base URL (no trailing slash)
+    const WORKER_BASE = "https://jim.liambaker2030.workers.dev";
 
-    function openUrl() {
-      const url = document.getElementById("urlInput").value.trim();
-      if (!url) {
-        alert("⚠️ Please enter a URL.");
+    const statusEl = document.getElementById("status");
+    const statusText = document.getElementById("statusText");
+    const spinner = document.getElementById("spinner");
+    const goBtn = document.getElementById("goBtn");
+    const urlInput = document.getElementById("urlInput");
+
+    // MOCK Pyodide "init" sequence (cosmetic)
+    async function mockPyodideInit() {
+      setStatusLoading("Loading Pyodide (mock)...");
+      // pretend to fetch/load for a short time
+      await new Promise(r => setTimeout(r, 900));    // small realistic delay
+      // optional second step
+      setStatusLoading("Finalizing modules...");
+      await new Promise(r => setTimeout(r, 700));
+      setStatusReady("✅ Pyodide ready (mock) — Worker check next");
+      // after showing ready, do a quick Worker health check
+      await checkWorkerHealth();
+    }
+
+    function setStatusLoading(text) {
+      statusEl.className = "loading";
+      statusText.textContent = text;
+      spinner.style.display = "inline-block";
+    }
+    function setStatusReady(text) {
+      statusEl.className = "ready";
+      statusText.textContent = text;
+      spinner.style.display = "none";
+    }
+    function setStatusError(text) {
+      statusEl.className = "error";
+      statusText.textContent = text;
+      spinner.style.display = "none";
+    }
+
+    async function checkWorkerHealth() {
+      try {
+        // quick ping to the Worker using example.com (no visible data leak)
+        const pingUrl = WORKER_BASE + "?data=" + btoa("https://example.com");
+        const r = await fetch(pingUrl, { method: "GET" });
+        if (r.ok) {
+          setStatusReady("✅ Worker reachable — ready");
+        } else {
+          setStatusError("❌ Worker responded with " + r.status);
+        }
+      } catch (err) {
+        setStatusError("❌ Worker unreachable");
+        console.error("Worker ping error:", err);
+      }
+    }
+
+    // encode and go (redirect the browser to the worker)
+    function openViaWorkerEncoded() {
+      let raw = urlInput.value.trim();
+      if (!raw) {
+        alert("Please enter a URL.");
         return;
       }
+      // ensure scheme exists
+      if (!/^https?:\/\//i.test(raw)) raw = "https://" + raw;
 
-      // Encode the URL in Base64 to obfuscate it
-      const encodedUrl = btoa(url);
+      // Base64 encode (obfuscation)
+      const encoded = btoa(raw);
 
-      // Redirect with encoded parameter
-      window.location.href = workerUrl + "?data=" + encodedUrl;
+      // redirect the browser so the proxied page renders normally
+      window.location.href = WORKER_BASE + "?data=" + encoded;
     }
+
+    // wire up button + enter key
+    goBtn.addEventListener("click", openViaWorkerEncoded);
+    urlInput.addEventListener("keydown", (e) => { if (e.key === "Enter") openViaWorkerEncoded(); });
+
+    // kick off mock init on load
+    mockPyodideInit();
   </script>
 </body>
 </html>
