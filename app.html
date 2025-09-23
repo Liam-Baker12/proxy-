@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Worker App</title>
+  <title>Worker Redirect</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -28,49 +28,25 @@
     button:hover {
       background: #005a9e;
     }
-    #result {
-      margin-top: 20px;
-      white-space: pre-wrap;
-      text-align: left;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
-      background: #fff;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
   </style>
 </head>
 <body>
-  <h1>Test a URL</h1>
+  <h1>Open a URL through Worker</h1>
   <input type="text" id="urlInput" placeholder="https://example.com">
-  <button onclick="testUrl()">Fetch</button>
-
-  <div id="result"></div>
+  <button onclick="openUrl()">Go</button>
 
   <script>
     const workerUrl = "https://jim.liambaker2030.workers.dev";
 
-    function testUrl() {
+    function openUrl() {
       const url = document.getElementById("urlInput").value.trim();
-      const resultEl = document.getElementById("result");
-
       if (!url) {
-        resultEl.textContent = "⚠️ Please enter a URL.";
+        alert("⚠️ Please enter a URL.");
         return;
       }
 
-      resultEl.textContent = "⏳ Fetching...";
-
-      fetch(workerUrl + "?url=" + encodeURIComponent(url))
-        .then(res => res.text())
-        .then(text => {
-          resultEl.textContent = "Response:\n\n" + text;
-        })
-        .catch(err => {
-          resultEl.textContent = "❌ Error: " + err;
-        });
+      // Redirect browser to Worker, which will proxy the site
+      window.location.href = workerUrl + "?url=" + encodeURIComponent(url);
     }
   </script>
 </body>
