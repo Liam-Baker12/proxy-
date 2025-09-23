@@ -1,60 +1,100 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Pyodide Proxy Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+      background: #f8f9fa;
+    }
+    h1 {
+      color: #333;
+    }
+    #output {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 6px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    .success {
+      background: #e6ffed;
+      color: #137333;
+      border: 1px solid #137333;
+    }
+    .error {
+      background: #ffebeb;
+      color: #d93025;
+      border: 1px solid #d93025;
+    }
+    input[type="text"] {
+      width: 400px;
+      padding: 8px;
+      font-size: 14px;
+    }
+    button {
+      padding: 8px 12px;
+      font-size: 14px;
+      margin-left: 5px;
+      cursor: pointer;
+    }
+  </style>
 </head>
 <body>
-  <h1>Pyodide Proxy Test</h1>
+  <h1>🔗 Pyodide Proxy</h1>
+  <p>Enter a URL to fetch using Python in the browser:</p>
 
-  <!-- Input + Button -->
-  <input id="url-input" type="text" placeholder="Enter URL (e.g., https://httpbin.org/get)">
+  <input type="text" id="urlInput" placeholder="https://example.com">
   <button onclick="runProxy()">Fetch</button>
 
-  <!-- Output -->
-  <pre id="output">Waiting for input...</pre>
+  <div id="output"></div>
 
-  <!-- Load Pyodide -->
-  <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
   <script>
     let pyodide;
 
-    // Load Pyodide and your Python file
-    async function initPyodide() {
-      document.getElementById("output").textContent = "⏳ Loading Pyodide...";
+    async function main() {
       pyodide = await loadPyodide();
-
-      // Load your main.py (must be in same repo as index.html)
+      await pyodide.loadPackage("micropip");
       await pyodide.runPythonAsync(`
-        import asyncio
         from pyodide.http import pyfetch
-        import json
+
+        async def proxy_get(url):
+            try:
+                response = await pyfetch(url)
+                text = await response.string()
+                return text[:1000]  # first 1000 chars
+            except Exception as e:
+                return f"Error: {e}"
       `);
-
-      // Actually load your file
-      await pyodide.runPythonAsync(await (await fetch("main.py")).text());
-
-      document.getElementById("output").textContent = "✅ Pyodide ready!";
     }
 
-    // Called when "Fetch" button is pressed
     async function runProxy() {
-      const url = document.getElementById("url-input").value;
-      if (!url) {
-        document.getElementById("output").textContent = "⚠️ Please enter a URL.";
-        return;
-      }
+      const url = document.getElementById("urlInput").value;
+      const output = document.getElementById("output");
+      output.textContent = "⏳ Fetching...";
+      output.className = "";
 
       try {
-        let result = await pyodide.runPythonAsync(`await proxy_get("${url}")`);
-        document.getElementById("output").textContent = result;
+        let result = await pyodide.runPythonAsync(`
+          await proxy_get("${url}")
+        `);
+        if (result.startsWith("Error:")) {
+          output.textContent = "❌ " + result;
+          output.className = "error";
+        } else {
+          output.textContent = "✅ Success:\n\n" + result;
+          output.className = "success";
+        }
       } catch (err) {
-        document.getElementById("output").textContent = "❌ Error: " + err;
+        output.textContent = "❌ Failed: " + err;
+        output.className = "error";
       }
     }
 
-    // Initialize Pyodide on page load
-    initPyodide();
+    main();
   </script>
 </body>
 </html>
