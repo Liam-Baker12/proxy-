@@ -68,32 +68,25 @@
     let pyodide;
 
     async function main() {
+      const status = document.getElementById("status");
       try {
-        const status = document.getElementById("status");
         status.textContent = "⏳ Loading Pyodide...";
         status.className = "loading";
 
         pyodide = await loadPyodide();
-        await pyodide.loadPackage("micropip");
 
-        // Define proxy_get in Python
-        await pyodide.runPythonAsync(`
-from pyodide.http import pyfetch
+        // Try to fetch and load main.py from your repo
+        const response = await fetch("main.py");
+        if (!response.ok) {
+          throw new Error("main.py not found (HTTP " + response.status + ")");
+        }
+        const pyCode = await response.text();
+        await pyodide.runPythonAsync(pyCode);
 
-async def proxy_get(url):
-    try:
-        response = await pyfetch(url)
-        text = await response.string()
-        return text[:1000]  # limit output size
-    except Exception as e:
-        return f"Error: {e}"
-        `);
-
-        status.textContent = "✅ Pyodide ready!";
+        status.textContent = "✅ Pyodide + main.py ready!";
         status.className = "ready";
       } catch (err) {
-        const status = document.getElementById("status");
-        status.textContent = "❌ Failed to load Pyodide: " + err;
+        status.textContent = "❌ Failed to load: " + err;
         status.className = "error";
       }
     }
@@ -108,8 +101,8 @@ async def proxy_get(url):
         let result = await pyodide.runPythonAsync(`
           await proxy_get("${url}")
         `);
-        if (result.startsWith("Error:")) {
-          output.textContent = "❌ " + result;
+        if (result.startsWith("❌") || result.startsWith("Error")) {
+          output.textContent = result;
           output.className = "error-output";
         } else {
           output.textContent = "✅ Success:\n\n" + result;
