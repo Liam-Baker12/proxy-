@@ -2,78 +2,38 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Worker Test</title>
+  <title>Worker Status</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f5f5f5;
       text-align: center;
       padding: 50px;
+      background: #f5f5f5;
     }
     #status {
       font-size: 1.5em;
       margin: 20px 0;
     }
-    .ready {
-      color: green;
-    }
-    .not-ready {
-      color: red;
-    }
-    input[type="text"] {
-      padding: 8px;
-      width: 300px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    button {
-      padding: 8px 16px;
-      margin-left: 10px;
-      border: none;
-      border-radius: 4px;
-      background: #0078d7;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #005a9e;
-    }
-    #result {
-      margin-top: 20px;
-      white-space: pre-wrap;
-      text-align: left;
-      max-width: 600px;
-      margin-left: auto;
-      margin-right: auto;
-      background: #fff;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
+    .ready { color: green; }
+    .not-ready { color: red; }
   </style>
 </head>
 <body>
   <h1>Cloudflare Worker Status</h1>
   <div id="status" class="not-ready">⏳ Checking...</div>
 
-  <h2>Test a URL</h2>
-  <input type="text" id="urlInput" placeholder="https://example.com">
-  <button onclick="testUrl()">Fetch</button>
-
-  <div id="result"></div>
-
   <script>
     const statusEl = document.getElementById("status");
-
-    // Change this to your Worker URL
     const workerUrl = "https://jim.liambaker2030.workers.dev";
 
-    // Initial "is Worker alive?" check
     fetch(workerUrl + "?url=https://example.com")
       .then(res => {
         if (res.ok) {
-          statusEl.textContent = "✅ Ready";
+          statusEl.textContent = "✅ Ready – Redirecting...";
           statusEl.className = "ready";
+          setTimeout(() => {
+            window.location.href = "app.html"; // go to the next page
+          }, 1500);
         } else {
           statusEl.textContent = "❌ Not Ready";
           statusEl.className = "not-ready";
@@ -83,27 +43,6 @@
         statusEl.textContent = "❌ Not Ready";
         statusEl.className = "not-ready";
       });
-
-    // Function to test a custom URL
-    function testUrl() {
-      const url = document.getElementById("urlInput").value.trim();
-      const resultEl = document.getElementById("result");
-      if (!url) {
-        resultEl.textContent = "⚠️ Please enter a URL.";
-        return;
-      }
-
-      resultEl.textContent = "⏳ Fetching...";
-
-      fetch(workerUrl + "?url=" + encodeURIComponent(url))
-        .then(res => res.text())
-        .then(text => {
-          resultEl.textContent = "Response:\n\n" + text;
-        })
-        .catch(err => {
-          resultEl.textContent = "❌ Error: " + err;
-        });
-    }
   </script>
 </body>
 </html>
