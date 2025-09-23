@@ -8,36 +8,37 @@
   <h1>Pyodide Proxy Test</h1>
 
   <!-- Input + Button -->
-  <input id="url-input" type="text" placeholder="Enter URL (e.g., https://example.com)">
+  <input id="url-input" type="text" placeholder="Enter URL (e.g., https://jsonplaceholder.typicode.com/posts/1)">
   <button onclick="runProxy()">Fetch</button>
 
   <!-- Output -->
-  <pre id="output">⏳ Loading Pyodide...</pre>
+  <pre id="output">Waiting for input...</pre>
 
   <!-- Load Pyodide -->
   <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
   <script>
     let pyodide;
 
-    // Initialize Pyodide when the page loads
+    // Load Pyodide and our Python helper functions
     async function initPyodide() {
-      try {
-        pyodide = await loadPyodide();
-        await pyodide.loadPackage("micropip");
+      pyodide = await loadPyodide();
+      // Load proxy.py (must be in same GitHub repo as index.html)
+      await pyodide.runPython(`
+from js import fetch
+import asyncio
 
-        // Load your external proxy.py
-        await pyodide.runPythonAsync(`
-with open("proxy.py") as f:
-    exec(f.read())
-        `);
-
-        document.getElementById("output").textContent = "✅ Pyodide ready!";
-      } catch (err) {
-        document.getElementById("output").textContent = "❌ Failed to load Pyodide: " + err;
-      }
+async def fetch_url(url: str):
+    try:
+        response = await fetch(url)
+        text = await response.text()
+        return text[:500]  # return first 500 chars
+    except Exception as e:
+        return f"⚠️ Error fetching {url}: {e}"
+      `);
+      document.getElementById("output").textContent = "✅ Pyodide ready!";
     }
 
-    // Called when the "Fetch" button is clicked
+    // Called when "Fetch" button is pressed
     async function runProxy() {
       const url = document.getElementById("url-input").value;
       if (!url) {
@@ -51,14 +52,14 @@ import asyncio
 result = asyncio.run(fetch_url("${url}"))
 result
         `);
-
         document.getElementById("output").textContent = result;
       } catch (err) {
         document.getElementById("output").textContent = "❌ Error running Python: " + err;
+        console.error(err);
       }
     }
 
-    // Start Pyodide on page load
+    // Initialize Pyodide on page load
     initPyodide();
   </script>
 </body>
