@@ -1,84 +1,65 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Pyodide Proxy</title>
+  <meta charset="UTF-8">
+  <title>Pyodide Proxy Test</title>
 </head>
 <body>
-    <h1>Pyodide Proxy Test</h1>
-    <input type="text" id="url" placeholder="Enter URL (e.g., https://example.com)" size="50">
-    <button onclick="runPython()">Fetch</button>
-    <pre id="output">Waiting for input...</pre>
+  <h1>Pyodide Proxy Test</h1>
 
-    <script type="text/javascript">
-        async function loadPyodideAndPackages() {
-            window.pyodide = await loadPyodide();
-            await pyodide.loadPackage("micropip");
-            await pyodide.runPythonAsync(await (await fetch("main.py")).text());
-        }
+  <!-- Input + Button -->
+  <input id="url-input" type="text" placeholder="Enter URL (e.g., https://example.com)">
+  <button onclick="runProxy()">Fetch</button>
 
-        async function runPython() {
-            const url = document.getElementById("url").value;
-            const output = await pyodide.runPythonAsync(`await proxy_get("${url}")`);
-            document.getElementById("output").textContent = output;
-        }
+  <!-- Output -->
+  <pre id="output">⏳ Loading Pyodide...</pre>
 
-        loadPyodideAndPackages();
-    </script>
+  <!-- Load Pyodide -->
+  <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+  <script>
+    let pyodide;
 
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
-    <!-- Load Pyodide from CDN -->
-<script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
-<script>
-  async function main() {
-    const pyodide = await loadPyodide();
-    document.getElementById("output").textContent = "✅ Pyodide ready!";
+    // Initialize Pyodide when the page loads
+    async function initPyodide() {
+      try {
+        pyodide = await loadPyodide();
+        await pyodide.loadPackage("micropip");
 
-    // Run some Python code in the browser
-    let version = await pyodide.runPythonAsync(`
-        import sys
-        sys.version
-    `);
-    console.log("Python version:", version);
-  }
+        // Load your external proxy.py
+        await pyodide.runPythonAsync(`
+with open("proxy.py") as f:
+    exec(f.read())
+        `);
 
-  main();
-</script>
-<!-- Load Pyodide -->
-<script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
-<script>
-  let pyodide;
-
-  async function initPyodide() {
-    pyodide = await loadPyodide();
-    document.getElementById("output").textContent = "✅ Pyodide ready!";
-  }
-
-  async function runProxy() {
-    const url = document.getElementById("url-input").value;
-    if (!url) {
-      document.getElementById("output").textContent = "Please enter a URL.";
-      return;
+        document.getElementById("output").textContent = "✅ Pyodide ready!";
+      } catch (err) {
+        document.getElementById("output").textContent = "❌ Failed to load Pyodide: " + err;
+      }
     }
 
-    try {
-      let result = await pyodide.runPythonAsync(`
-        from js import fetch
-        import asyncio
+    // Called when the "Fetch" button is clicked
+    async function runProxy() {
+      const url = document.getElementById("url-input").value;
+      if (!url) {
+        document.getElementById("output").textContent = "⚠️ Please enter a URL.";
+        return;
+      }
 
-        async def get_data():
-            response = await fetch("${url}")
-            return await response.text()
+      try {
+        let result = await pyodide.runPythonAsync(`
+import asyncio
+result = asyncio.run(fetch_url("${url}"))
+result
+        `);
 
-        asyncio.run(get_data())
-      `);
-      document.getElementById("output").textContent = result;
-    } catch (err) {
-      document.getElementById("output").textContent = "❌ Error: " + err;
+        document.getElementById("output").textContent = result;
+      } catch (err) {
+        document.getElementById("output").textContent = "❌ Error running Python: " + err;
+      }
     }
-  }
 
-  initPyodide();
-</script>
-
+    // Start Pyodide on page load
+    initPyodide();
+  </script>
 </body>
 </html>
