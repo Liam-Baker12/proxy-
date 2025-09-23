@@ -8,34 +8,33 @@
   <h1>Pyodide Proxy Test</h1>
 
   <!-- Input + Button -->
-  <input id="url-input" type="text" placeholder="Enter URL (e.g., https://jsonplaceholder.typicode.com/posts/1)">
+  <input id="url-input" type="text" placeholder="Enter URL (e.g., https://httpbin.org/get)">
   <button onclick="runProxy()">Fetch</button>
 
   <!-- Output -->
-  <pre id="output">⏳ Loading Pyodide...</pre>
+  <pre id="output">Waiting for input...</pre>
 
   <!-- Load Pyodide -->
   <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
   <script>
     let pyodide;
 
-    // Initialize Pyodide and load main.py
+    // Load Pyodide and your Python file
     async function initPyodide() {
-      try {
-        pyodide = await loadPyodide();
+      document.getElementById("output").textContent = "⏳ Loading Pyodide...";
+      pyodide = await loadPyodide();
 
-        // Fetch main.py over HTTP (must be in same folder as index.html in repo)
-        const response = await fetch("main.py");
-        const pythonCode = await response.text();
+      // Load your main.py (must be in same repo as index.html)
+      await pyodide.runPythonAsync(`
+        import asyncio
+        from pyodide.http import pyfetch
+        import json
+      `);
 
-        // Run its contents inside Pyodide
-        await pyodide.runPythonAsync(pythonCode);
+      // Actually load your file
+      await pyodide.runPythonAsync(await (await fetch("main.py")).text());
 
-        document.getElementById("output").textContent = "✅ Pyodide ready with main.py!";
-      } catch (err) {
-        document.getElementById("output").textContent = "❌ Failed to load Pyodide: " + err;
-        console.error(err);
-      }
+      document.getElementById("output").textContent = "✅ Pyodide ready!";
     }
 
     // Called when "Fetch" button is pressed
@@ -47,22 +46,15 @@
       }
 
       try {
-        let result = await pyodide.runPythonAsync(`
-import asyncio
-result = asyncio.run(fetch_url("${url}"))
-result
-        `);
-
+        let result = await pyodide.runPythonAsync(`await proxy_get("${url}")`);
         document.getElementById("output").textContent = result;
       } catch (err) {
-        document.getElementById("output").textContent = "❌ Error running Python: " + err;
-        console.error(err);
+        document.getElementById("output").textContent = "❌ Error: " + err;
       }
     }
 
-    // Start Pyodide on page load
+    // Initialize Pyodide on page load
     initPyodide();
   </script>
 </body>
 </html>
-
