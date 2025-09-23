@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Worker Redirect</title>
+  <title>Worker Redirect (Encrypted)</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -45,8 +45,11 @@
         return;
       }
 
-      // Redirect browser to Worker (no fetch!)
-      window.location.href = workerUrl + "?url=" + encodeURIComponent(url);
+      // Encode the URL in Base64 to obfuscate it
+      const encodedUrl = btoa(url);
+
+      // Redirect with encoded parameter
+      window.location.href = workerUrl + "?data=" + encodedUrl;
     }
   </script>
 </body>
