@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Worker Redirect (with mock Pyodide)</title>
+  <title>Worker Redirect (secure + mock Pyodide)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     body {
@@ -58,7 +58,6 @@
     .loading { background:#fff8e6; color:#8a6d3b; border:1px solid #f2e6c9; }
     .ready   { background:#e9f9ef; color:#046c3a; border:1px solid #cfeeda; }
     .error   { background:#fff0f0; color:#a31b1b; border:1px solid #f3cfcf; }
-
     .small { font-size:13px; color:#666; margin-top:8px; }
     .spinner {
       display:inline-block;
@@ -71,20 +70,14 @@
       margin-right:8px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    @media (max-width:600px){
-      .card { padding:18px; }
-      input[type="text"]{ font-size:13px; }
-    }
-    .controls { display:flex; gap:8px; justify-content:center; margin-top:10px; }
   </style>
 </head>
 <body>
   <div class="card">
     <h1>Open a URL through Worker</h1>
-    <p class="help">Type a website address below and click <strong>Go</strong>. The page will be opened via your Cloudflare Worker (URL is obfuscated).</p>
+    <p class="help">Type a website address below and click <strong>Go</strong>. The Worker will store and redirect securely (encrypted).</p>
 
-    <div class="controls">
+    <div style="display:flex; gap:8px; align-items:center; justify-content:center;">
       <input id="urlInput" type="text" placeholder="https://example.com (or youtube.com)" />
       <button class="primary" id="goBtn">Go</button>
     </div>
@@ -94,12 +87,11 @@
       <span id="statusText">Loading Pyodide (mock)...</span>
     </div>
 
-    <div class="small">Note: the Pyodide load shown here is cosmetic — the page uses your Cloudflare Worker for proxying.</div>
+    <div class="small">Note: the Pyodide load is cosmetic — Worker handles secure proxying.</div>
   </div>
 
   <script>
-    // Your Cloudflare Worker base URL (no trailing slash)
-    const WORKER_BASE = "https://jim.liambaker2030.workers.dev";
+    const WORKER_BASE = "https://jim.liambaker2030.workers.dev"; // your Worker URL
 
     const statusEl = document.getElementById("status");
     const statusText = document.getElementById("statusText");
@@ -107,16 +99,7 @@
     const goBtn = document.getElementById("goBtn");
     const urlInput = document.getElementById("urlInput");
 
-    // MOCK Pyodide "init" sequence (cosmetic)
-    async function mockPyodideInit() {
-      setStatusLoading("Loading Pyodide (mock)...");
-      await new Promise(r => setTimeout(r, 900));
-      setStatusLoading("Finalizing modules...");
-      await new Promise(r => setTimeout(r, 700));
-      setStatusReady("✅ Pyodide ready (mock) — Worker check next");
-      await checkWorkerHealth();
-    }
-
+    // Status helpers
     function setStatusLoading(text) {
       statusEl.className = "loading";
       statusText.textContent = text;
@@ -133,54 +116,48 @@
       spinner.style.display = "none";
     }
 
-    async function checkWorkerHealth() {
-      try {
-        const pingUrl = WORKER_BASE + "?data=" + btoa("https://example.com");
-        const r = await fetch(pingUrl, { method: "GET" });
-        if (r.ok) {
-          setStatusReady("✅ Worker reachable — ready");
-        } else {
-          setStatusError("❌ Worker responded with " + r.status);
-        }
-      } catch (err) {
-        setStatusError("❌ Worker unreachable");
-        console.error("Worker ping error:", err);
-      }
+    // Mock Pyodide init (cosmetic)
+    async function mockPyodideInit() {
+      setStatusLoading("Loading Pyodide (mock)...");
+      await new Promise(r => setTimeout(r, 800));
+      setStatusLoading("Finalizing modules...");
+      await new Promise(r => setTimeout(r, 600));
+      setStatusReady("✅ Pyodide ready (mock)");
     }
 
-    // New flow: POST to /api/save, then redirect with ?id=
+    // Save + redirect through Worker
     async function saveAndOpen() {
       let raw = urlInput.value.trim();
-      if (!raw) {
-        alert("Please enter a URL.");
-        return;
-      }
+      if (!raw) return alert("Please enter a URL");
       if (!/^https?:\/\//i.test(raw)) raw = "https://" + raw;
+
+      setStatusLoading("Saving encrypted link...");
 
       try {
         const res = await fetch(WORKER_BASE + "/api/save", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ url: raw, ttlSeconds: 300 }) // 5 minute TTL
+          body: JSON.stringify({ url: raw, ttlSeconds: 300 }),
         });
         if (!res.ok) {
           const text = await res.text();
-          return alert("Save error: " + res.status + " " + text);
+          setStatusError("Save error: " + res.status);
+          return alert("Error: " + text);
         }
         const data = await res.json();
+        setStatusReady("Redirecting...");
         window.location.href = WORKER_BASE + "?id=" + encodeURIComponent(data.id);
       } catch (err) {
+        setStatusError("Network error");
         alert("Network error: " + err);
       }
     }
 
-    // Wire up button + Enter key
+    // Wire up
     goBtn.addEventListener("click", saveAndOpen);
-    urlInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") saveAndOpen();
-    });
+    urlInput.addEventListener("keydown", e => { if (e.key === "Enter") saveAndOpen(); });
 
-    // Kick off mock init on load
+    // Start mock init
     mockPyodideInit();
   </script>
 </body>
