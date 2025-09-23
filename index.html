@@ -28,7 +28,6 @@
     }
     h1 { margin: 0 0 12px; font-size: 20px; }
     p.help { margin: 6px 0 18px; color: #555; font-size: 14px; }
-    .controls { display:flex; justify-content:center; gap:8px; margin-top: 10px; }
     input[type="text"] {
       flex: 1;
       padding: 10px 12px;
@@ -77,6 +76,7 @@
       .card { padding:18px; }
       input[type="text"]{ font-size:13px; }
     }
+    .controls { display:flex; gap:8px; justify-content:center; margin-top:10px; }
   </style>
 </head>
 <body>
@@ -84,7 +84,7 @@
     <h1>Open a URL through Worker</h1>
     <p class="help">Type a website address below and click <strong>Go</strong>. The page will be opened via your Cloudflare Worker (URL is obfuscated).</p>
 
-    <div style="display:flex; gap:8px; align-items:center; justify-content:center;">
+    <div class="controls">
       <input id="urlInput" type="text" placeholder="https://example.com (or youtube.com)" />
       <button class="primary" id="goBtn">Go</button>
     </div>
@@ -110,13 +110,10 @@
     // MOCK Pyodide "init" sequence (cosmetic)
     async function mockPyodideInit() {
       setStatusLoading("Loading Pyodide (mock)...");
-      // pretend to fetch/load for a short time
-      await new Promise(r => setTimeout(r, 900));    // small realistic delay
-      // optional second step
+      await new Promise(r => setTimeout(r, 900));
       setStatusLoading("Finalizing modules...");
       await new Promise(r => setTimeout(r, 700));
       setStatusReady("✅ Pyodide ready (mock) — Worker check next");
-      // after showing ready, do a quick Worker health check
       await checkWorkerHealth();
     }
 
@@ -138,7 +135,6 @@
 
     async function checkWorkerHealth() {
       try {
-        // quick ping to the Worker using example.com (no visible data leak)
         const pingUrl = WORKER_BASE + "?data=" + btoa("https://example.com");
         const r = await fetch(pingUrl, { method: "GET" });
         if (r.ok) {
@@ -152,28 +148,39 @@
       }
     }
 
-    // encode and go (redirect the browser to the worker)
-    function openViaWorkerEncoded() {
+    // New flow: POST to /api/save, then redirect with ?id=
+    async function saveAndOpen() {
       let raw = urlInput.value.trim();
       if (!raw) {
         alert("Please enter a URL.");
         return;
       }
-      // ensure scheme exists
       if (!/^https?:\/\//i.test(raw)) raw = "https://" + raw;
 
-      // Base64 encode (obfuscation)
-      const encoded = btoa(raw);
-
-      // redirect the browser so the proxied page renders normally
-      window.location.href = WORKER_BASE + "?data=" + encoded;
+      try {
+        const res = await fetch(WORKER_BASE + "/api/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: raw, ttlSeconds: 300 }) // 5 minute TTL
+        });
+        if (!res.ok) {
+          const text = await res.text();
+          return alert("Save error: " + res.status + " " + text);
+        }
+        const data = await res.json();
+        window.location.href = WORKER_BASE + "?id=" + encodeURIComponent(data.id);
+      } catch (err) {
+        alert("Network error: " + err);
+      }
     }
 
-    // wire up button + enter key
-    goBtn.addEventListener("click", openViaWorkerEncoded);
-    urlInput.addEventListener("keydown", (e) => { if (e.key === "Enter") openViaWorkerEncoded(); });
+    // Wire up button + Enter key
+    goBtn.addEventListener("click", saveAndOpen);
+    urlInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") saveAndOpen();
+    });
 
-    // kick off mock init on load
+    // Kick off mock init on load
     mockPyodideInit();
   </script>
 </body>
