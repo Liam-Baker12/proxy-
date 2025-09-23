@@ -26,5 +26,23 @@
     </script>
 
     <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+    <!-- Load Pyodide from CDN -->
+<script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+<script>
+  async function main() {
+    const pyodide = await loadPyodide();
+    document.getElementById("output").textContent = "✅ Pyodide ready!";
+
+    // Run some Python code in the browser
+    let version = await pyodide.runPythonAsync(`
+        import sys
+        sys.version
+    `);
+    console.log("Python version:", version);
+  }
+
+  main();
+</script>
+
 </body>
 </html>
