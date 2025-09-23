@@ -12,30 +12,30 @@
   <button onclick="runProxy()">Fetch</button>
 
   <!-- Output -->
-  <pre id="output">Waiting for input...</pre>
+  <pre id="output">⏳ Loading Pyodide...</pre>
 
   <!-- Load Pyodide -->
   <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
   <script>
     let pyodide;
 
-    // Load Pyodide and our Python helper functions
+    // Initialize Pyodide and load main.py
     async function initPyodide() {
-      pyodide = await loadPyodide();
-      // Load proxy.py (must be in same GitHub repo as index.html)
-      await pyodide.runPython(`
-from js import fetch
-import asyncio
+      try {
+        pyodide = await loadPyodide();
 
-async def fetch_url(url: str):
-    try:
-        response = await fetch(url)
-        text = await response.text()
-        return text[:500]  # return first 500 chars
-    except Exception as e:
-        return f"⚠️ Error fetching {url}: {e}"
-      `);
-      document.getElementById("output").textContent = "✅ Pyodide ready!";
+        // Fetch main.py over HTTP (must be in same folder as index.html in repo)
+        const response = await fetch("main.py");
+        const pythonCode = await response.text();
+
+        // Run its contents inside Pyodide
+        await pyodide.runPythonAsync(pythonCode);
+
+        document.getElementById("output").textContent = "✅ Pyodide ready with main.py!";
+      } catch (err) {
+        document.getElementById("output").textContent = "❌ Failed to load Pyodide: " + err;
+        console.error(err);
+      }
     }
 
     // Called when "Fetch" button is pressed
@@ -52,6 +52,7 @@ import asyncio
 result = asyncio.run(fetch_url("${url}"))
 result
         `);
+
         document.getElementById("output").textContent = result;
       } catch (err) {
         document.getElementById("output").textContent = "❌ Error running Python: " + err;
@@ -59,8 +60,9 @@ result
       }
     }
 
-    // Initialize Pyodide on page load
+    // Start Pyodide on page load
     initPyodide();
   </script>
 </body>
 </html>
+
