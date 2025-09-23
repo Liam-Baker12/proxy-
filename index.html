@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pyodide Proxy</title>
+</head>
+<body>
+    <h1>Pyodide Proxy Test</h1>
+    <input type="text" id="url" placeholder="Enter URL (e.g., https://example.com)" size="50">
+    <button onclick="runPython()">Fetch</button>
+    <pre id="output">Waiting for input...</pre>
+
+    <script type="text/javascript">
+        async function loadPyodideAndPackages() {
+            window.pyodide = await loadPyodide();
+            await pyodide.loadPackage("micropip");
+            await pyodide.runPythonAsync(await (await fetch("main.py")).text());
+        }
+
+        async function runPython() {
+            const url = document.getElementById("url").value;
+            const output = await pyodide.runPythonAsync(`await proxy_get("${url}")`);
+            document.getElementById("output").textContent = output;
+        }
+
+        loadPyodideAndPackages();
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+</body>
+</html>
