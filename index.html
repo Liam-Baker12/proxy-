@@ -5,34 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Proxy Tunnels</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      color: #333;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 40px;
-    }
+    body { font-family: Arial; background: #f4f4f4; display: flex; flex-direction: column; align-items: center; padding: 40px; }
     h1 { margin-bottom: 20px; }
-    a.button {
-      display: inline-block;
-      padding: 12px 24px;
-      margin: 10px;
-      background-color: #007acc;
-      color: white;
-      text-decoration: none;
-      border-radius: 6px;
-      transition: background-color 0.2s;
-    }
-    a.button:hover { background-color: #005fa3; }
-    .instructions {
-      margin-top: 40px;
-      max-width: 600px;
-      text-align: center;
-      font-size: 0.9rem;
-      color: #555;
-    }
+    a.button { display: inline-block; padding: 12px 24px; margin: 10px; background: #007acc; color: white; text-decoration: none; border-radius: 6px; transition: 0.2s; }
+    a.button:hover { background: #005fa3; }
+    .instructions { margin-top: 40px; max-width: 600px; text-align: center; font-size: 0.9rem; color: #555; }
   </style>
 </head>
 <body>
@@ -48,28 +25,30 @@
     const workerUrl = "https://jim.liambaker2030.workers.dev";
     const secret = "mySuperSecret123"; // Replace with your secret
 
-    // List of tunnel keys to display
-    const tunnelKeys = ["a", "b"]; // Add more keys if needed
-
     const container = document.getElementById("tunnel-buttons");
     container.innerHTML = "";
 
-    tunnelKeys.forEach(async key => {
+    async function loadTunnels() {
       try {
-        const resp = await fetch(`${workerUrl}/get?key=${key}`);
-        if (!resp.ok) return;
-        const url = await resp.text();
-        if (!url || url === "Nothing found") return;
+        const resp = await fetch(`${workerUrl}/list?secret=${secret}`);
+        if (!resp.ok) { container.textContent = "Failed to load tunnels"; return; }
 
-        const a = document.createElement("a");
-        a.href = `${workerUrl}/${key}?secret=${secret}`;
-        a.textContent = `Open Tunnel ${key.toUpperCase()}`;
-        a.className = "button";
-        container.appendChild(a);
+        const keys = await resp.json();
+        if (!keys.length) { container.textContent = "No tunnels found"; return; }
+
+        keys.forEach(key => {
+          const a = document.createElement("a");
+          a.href = `${workerUrl}/${key}?secret=${secret}`;
+          a.textContent = `Open Tunnel ${key.toUpperCase()}`;
+          a.className = "button";
+          container.appendChild(a);
+        });
       } catch (err) {
-        console.error("Error loading tunnel:", key, err);
+        container.textContent = "Error loading tunnels: " + err.message;
       }
-    });
+    }
+
+    loadTunnels();
   </script>
 
 </body>
