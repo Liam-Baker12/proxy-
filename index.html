@@ -2,78 +2,59 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Secure Proxy</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Worker Proxy</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #121212;
-      color: #f0f0f0;
-      text-align: center;
+      background-color: #f5f5f5;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       padding: 40px;
     }
-    input[type="text"] {
-      width: 60%;
-      padding: 12px;
-      font-size: 1.1em;
-      border: none;
-      border-radius: 8px;
-      margin-right: 10px;
+    h1 {
+      margin-bottom: 20px;
     }
-    button {
-      padding: 12px 20px;
-      font-size: 1.1em;
-      background: #007bff;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #0056b3;
-    }
-    #result {
-      margin-top: 20px;
-      font-family: monospace;
-      background: #1e1e1e;
-      padding: 15px;
-      border-radius: 8px;
+    a.button {
       display: inline-block;
-      max-width: 80%;
-      word-wrap: break-word;
+      padding: 12px 24px;
+      margin: 10px;
+      background-color: #007acc;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: background-color 0.2s;
+    }
+    a.button:hover {
+      background-color: #005fa3;
+    }
+    .instructions {
+      margin-top: 40px;
+      max-width: 600px;
+      text-align: center;
+      font-size: 0.9rem;
+      color: #555;
     }
   </style>
 </head>
 <body>
-  <h1>🔐 Encrypted Proxy</h1>
-  <p>Enter a URL to encrypt and store securely.</p>
 
-  <form id="proxyForm">
-    <input type="text" id="urlInput" placeholder="https://example.com" required />
-    <button type="submit">Encrypt & Store</button>
-  </form>
+  <h1>My Proxy Tunnels</h1>
 
-  <div id="result"></div>
+  <!-- Tunnel links -->
+  <a class="button" href="https://your-worker.workers.dev/a?secret=mySuperSecret123">Open Tunnel A</a>
+  <a class="button" href="https://your-worker.workers.dev/b?secret=mySuperSecret123">Open Tunnel B</a>
 
-  <script>
-    document.getElementById("proxyForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
+  <!-- Optional KV management instructions -->
+  <div class="instructions">
+    <p>To add or update tunnel URLs, use the <code>/set</code> endpoint:</p>
+    <pre>/set?key=a&value=https://example-a.com</pre>
+    <p>To view stored URLs, use <code>/get</code>:</p>
+    <pre>/get?key=a</pre>
+    <p>Remember: Keep your secret safe in the query string when accessing tunnels.</p>
+  </div>
 
-      const url = document.getElementById("urlInput").value.trim();
-      if (!url) return;
-
-      try {
-        const response = await fetch("https://jim.liambaker2030.workers.dev/encrypt", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ targetUrl: url })
-        });
-
-        const result = await response.text();
-        document.getElementById("result").textContent = result;
-      } catch (err) {
-        document.getElementById("result").textContent = "❌ Error: " + err.message;
-      }
-    });
-  </script>
 </body>
 </html>
