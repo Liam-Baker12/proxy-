@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Worker Proxy</title>
+  <title>My Proxy Tunnels</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
+      background-color: #f4f4f4;
       color: #333;
       display: flex;
       flex-direction: column;
@@ -37,6 +37,12 @@
       font-size: 0.9rem;
       color: #555;
     }
+    pre {
+      background-color: #eee;
+      padding: 8px;
+      border-radius: 4px;
+      overflow-x: auto;
+    }
   </style>
 </head>
 <body>
@@ -44,15 +50,17 @@
   <h1>My Proxy Tunnels</h1>
 
   <!-- Tunnel links -->
-  <a class="button" href="https://your-worker.workers.dev/a?secret=mySuperSecret123">Open Tunnel A</a>
-  <a class="button" href="https://your-worker.workers.dev/b?secret=mySuperSecret123">Open Tunnel B</a>
+  <a class="button" href="https://jim.liambaker2030.workers.dev/a?secret=mySuperSecret123">Open Tunnel A</a>
+  <a class="button" href="https://jim.liambaker2030.workers.dev/b?secret=mySuperSecret123">Open Tunnel B</a>
 
   <!-- Optional KV management instructions -->
   <div class="instructions">
     <p>To add or update tunnel URLs, use the <code>/set</code> endpoint:</p>
-    <pre>/set?key=a&value=https://example-a.com</pre>
+    <pre>https://jim.liambaker2030.workers.dev/set?key=a&value=https://www.youtube.com</pre>
+    <pre>https://jim.liambaker2030.workers.dev/set?key=b&value=https://example.com</pre>
     <p>To view stored URLs, use <code>/get</code>:</p>
-    <pre>/get?key=a</pre>
+    <pre>https://jim.liambaker2030.workers.dev/get?key=a</pre>
+    <pre>https://jim.liambaker2030.workers.dev/get?key=b</pre>
     <p>Remember: Keep your secret safe in the query string when accessing tunnels.</p>
   </div>
 
