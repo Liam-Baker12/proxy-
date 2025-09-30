@@ -7,9 +7,11 @@
   <style>
     body { font-family: Arial; background: #f4f4f4; display: flex; flex-direction: column; align-items: center; padding: 40px; }
     h1 { margin-bottom: 20px; }
-    a.button { display: inline-block; padding: 12px 24px; margin: 10px; background: #007acc; color: white; text-decoration: none; border-radius: 6px; transition: 0.2s; }
-    a.button:hover { background: #005fa3; }
-    .instructions { margin-top: 40px; max-width: 600px; text-align: center; font-size: 0.9rem; color: #555; }
+    a.button, button { display: inline-block; padding: 12px 24px; margin: 10px; background: #007acc; color: white; text-decoration: none; border-radius: 6px; border: none; cursor: pointer; transition: 0.2s; }
+    a.button:hover, button:hover { background: #005fa3; }
+    .instructions { margin-top: 30px; max-width: 600px; text-align: center; font-size: 0.9rem; color: #555; }
+    form { margin-top: 20px; display: flex; flex-direction: column; gap: 10px; width: 300px; }
+    input { padding: 8px; border-radius: 4px; border: 1px solid #ccc; width: 100%; }
   </style>
 </head>
 <body>
@@ -17,18 +19,27 @@
   <h1>My Proxy Tunnels</h1>
   <div id="tunnel-buttons">Loading tunnels...</div>
 
+  <form id="add-tunnel-form">
+    <h3>Add / Update Tunnel</h3>
+    <input type="text" id="key" placeholder="Tunnel key (e.g., a, b)" required>
+    <input type="url" id="url" placeholder="Target URL (HTTPS)" required>
+    <button type="submit">Save Tunnel</button>
+    <p id="form-message" style="color: green;"></p>
+  </form>
+
   <div class="instructions">
-    <p>All tunnel links are dynamically loaded from the Worker KV. Keep your secret safe!</p>
+    <p>Tunnels are loaded dynamically from your Worker KV. Keep your secret safe!</p>
   </div>
 
   <script>
     const workerUrl = "https://jim.liambaker2030.workers.dev";
-    const secret = "mySuperSecret123"; // Replace with your secret
-
+    const secret = "mySuperSecret123"; // Replace with your Worker secret
     const container = document.getElementById("tunnel-buttons");
-    container.innerHTML = "";
+    const form = document.getElementById("add-tunnel-form");
+    const messageEl = document.getElementById("form-message");
 
     async function loadTunnels() {
+      container.innerHTML = "";
       try {
         const resp = await fetch(`${workerUrl}/list?secret=${secret}`);
         if (!resp.ok) { container.textContent = "Failed to load tunnels"; return; }
@@ -47,6 +58,23 @@
         container.textContent = "Error loading tunnels: " + err.message;
       }
     }
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const key = document.getElementById("key").value.trim();
+      const url = document.getElementById("url").value.trim();
+      if (!key || !url) return;
+
+      try {
+        const resp = await fetch(`${workerUrl}/set?key=${encodeURIComponent(key)}&value=${encodeURIComponent(url)}`);
+        const text = await resp.text();
+        messageEl.textContent = text;
+        loadTunnels(); // Refresh the buttons after adding
+      } catch (err) {
+        messageEl.style.color = "red";
+        messageEl.textContent = "Error saving tunnel: " + err.message;
+      }
+    });
 
     loadTunnels();
   </script>
