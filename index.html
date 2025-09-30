@@ -14,9 +14,7 @@
       align-items: center;
       padding: 40px;
     }
-    h1 {
-      margin-bottom: 20px;
-    }
+    h1 { margin-bottom: 20px; }
     a.button {
       display: inline-block;
       padding: 12px 24px;
@@ -27,9 +25,7 @@
       border-radius: 6px;
       transition: background-color 0.2s;
     }
-    a.button:hover {
-      background-color: #005fa3;
-    }
+    a.button:hover { background-color: #005fa3; }
     .instructions {
       margin-top: 40px;
       max-width: 600px;
@@ -37,43 +33,31 @@
       font-size: 0.9rem;
       color: #555;
     }
-    pre {
-      background-color: #eee;
-      padding: 8px;
-      border-radius: 4px;
-      overflow-x: auto;
-    }
   </style>
 </head>
 <body>
 
   <h1>My Proxy Tunnels</h1>
-  <div id="tunnel-buttons"></div>
+  <div id="tunnel-buttons">Loading tunnels...</div>
 
   <div class="instructions">
-    <p>To add or update tunnel URLs, use the <code>/set</code> endpoint:</p>
-    <pre>https://jim.liambaker2030.workers.dev/set?key=a&value=https://www.youtube.com</pre>
-    <pre>https://jim.liambaker2030.workers.dev/set?key=b&value=https://example.com</pre>
-    <p>To view stored URLs, use <code>/get</code>:</p>
-    <pre>https://jim.liambaker2030.workers.dev/get?key=a</pre>
-    <pre>https://jim.liambaker2030.workers.dev/get?key=b</pre>
-    <p>All tunnel links are dynamically loaded from the Worker. Keep your secret safe!</p>
+    <p>All tunnel links are dynamically loaded from the Worker KV. Keep your secret safe!</p>
   </div>
 
   <script>
     const workerUrl = "https://jim.liambaker2030.workers.dev";
     const secret = "mySuperSecret123"; // Replace with your secret
 
-    // List of tunnel keys you want to display dynamically
-    const tunnelKeys = ["a", "b"]; // Add more keys as needed
+    // List of tunnel keys to display
+    const tunnelKeys = ["a", "b"]; // Add more keys if needed
 
     const container = document.getElementById("tunnel-buttons");
+    container.innerHTML = "";
 
-    tunnelKeys.forEach(async (key) => {
+    tunnelKeys.forEach(async key => {
       try {
         const resp = await fetch(`${workerUrl}/get?key=${key}`);
         if (!resp.ok) return;
-
         const url = await resp.text();
         if (!url || url === "Nothing found") return;
 
