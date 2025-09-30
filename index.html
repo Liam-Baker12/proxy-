@@ -48,12 +48,8 @@
 <body>
 
   <h1>My Proxy Tunnels</h1>
+  <div id="tunnel-buttons"></div>
 
-  <!-- Tunnel links -->
-  <a class="button" href="https://jim.liambaker2030.workers.dev/a?secret=mySuperSecret123">Open Tunnel A</a>
-  <a class="button" href="https://jim.liambaker2030.workers.dev/b?secret=mySuperSecret123">Open Tunnel B</a>
-
-  <!-- Optional KV management instructions -->
   <div class="instructions">
     <p>To add or update tunnel URLs, use the <code>/set</code> endpoint:</p>
     <pre>https://jim.liambaker2030.workers.dev/set?key=a&value=https://www.youtube.com</pre>
@@ -61,8 +57,36 @@
     <p>To view stored URLs, use <code>/get</code>:</p>
     <pre>https://jim.liambaker2030.workers.dev/get?key=a</pre>
     <pre>https://jim.liambaker2030.workers.dev/get?key=b</pre>
-    <p>Remember: Keep your secret safe in the query string when accessing tunnels.</p>
+    <p>All tunnel links are dynamically loaded from the Worker. Keep your secret safe!</p>
   </div>
+
+  <script>
+    const workerUrl = "https://jim.liambaker2030.workers.dev";
+    const secret = "mySuperSecret123"; // Replace with your secret
+
+    // List of tunnel keys you want to display dynamically
+    const tunnelKeys = ["a", "b"]; // Add more keys as needed
+
+    const container = document.getElementById("tunnel-buttons");
+
+    tunnelKeys.forEach(async (key) => {
+      try {
+        const resp = await fetch(`${workerUrl}/get?key=${key}`);
+        if (!resp.ok) return;
+
+        const url = await resp.text();
+        if (!url || url === "Nothing found") return;
+
+        const a = document.createElement("a");
+        a.href = `${workerUrl}/${key}?secret=${secret}`;
+        a.textContent = `Open Tunnel ${key.toUpperCase()}`;
+        a.className = "button";
+        container.appendChild(a);
+      } catch (err) {
+        console.error("Error loading tunnel:", key, err);
+      }
+    });
+  </script>
 
 </body>
 </html>
